@@ -1,0 +1,125 @@
+/* Navbar container */
+.nav-header {
+  background-color: #4CAF50; /* Fresh green color */
+  padding: 10px 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+/* Content wrapper */
+.nav-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Large container for desktop navbar */
+.nav-bar-large-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Logo text */
+.nav-logo-text {
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 700;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+}
+
+/* Navigation menu */
+.nav-menu {
+  list-style: none;
+  display: flex;
+  margin: 0;
+  padding: 0;
+}
+
+/* Navigation menu items */
+.nav-menu-item {
+  margin-left: 25px;
+}
+
+/* Navigation links */
+.nav-link {
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 600;
+  transition: color 0.3s ease;
+  display: flex;
+  align-items: center;
+}
+
+/* Hover effect for links */
+.nav-link:hover {
+  color: #a5d6a7; /* lighter green */
+}
+
+/* Cart icon styling */
+.nav-link svg {
+  font-size: 24px;
+  margin-right: 5px;
+}
+
+/* Cart count badge */
+.cart-count-badge {
+  background-color: #ff7043; /* Accent orange */
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 12px;
+  margin-left: 4px;
+  min-width: 20px;
+  text-align: center;
+  display: inline-block;
+}
+
+/* Mobile nav styles */
+.nav-bar-mobile-container {
+  display: none;
+  background-color: #4CAF50;
+  padding: 10px 15px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mobile-menu {
+  color: white;
+  cursor: pointer;
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.mobile-login-cart {
+  display: flex;
+  gap: 15px;
+}
+
+.mobile-login,
+.mobile-cart {
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+.mobile-cart .cart-count-badge {
+  margin-left: 6px;
+}
+
+/* Responsive behavior */
+@media screen and (max-width: 768px) {
+  .nav-bar-large-container {
+    display: none;
+  }
+  .nav-bar-mobile-container {
+    display: flex;
+  }
+}

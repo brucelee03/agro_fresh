@@ -18,3 +18,10 @@ CREATE TABLE orders (
     items JSON NOT NULL,
     status VARCHAR(50) NOT NULL
 );
+
+CREATE TABLE order_status_updates (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    status VARCHAR(50) NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
