@@ -1,114 +1,182 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const db = require('./db');
+import express, { json } from 'express'
+import { join } from 'path'
+import { open } from 'sqlite'
+import { Database } from 'sqlite3'
 
-const app = express();
-const PORT = process.env.PORT || 3000; // Updated to use port 3000
+const app = express()
+app.use(json())
 
-app.use(bodyParser.json());
+const dbPath = join(__dirname, 'products.db')
+let db = null
 
-// API routes
+const initializeDBServer = async () => {
+  try {
+    db = await open({
+      filename: dbPath,
+      driver: Database,
+    })
 
-// GET /api/products
-app.get('/api/products', async (req, res) => {
-    try {
-        const result = await db.query('SELECT * FROM products');
-        res.json(result.rows);
-    } catch (error) {
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
+    // Create products table if it doesn't exist
+    const createProductsTableQuery = `
+    CREATE TABLE IF NOT EXISTS products (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      price REAL NOT NULL,
+      productUrl TEXT,
+      description TEXT
+    );
 
-// POST /api/orders
-app.post('/api/orders', async (req, res) => {
-    const { productId, quantity } = req.body;
-    try {
-        const result = await db.query('INSERT INTO orders (product_id, quantity) VALUES ($1, $2) RETURNING *', [productId, quantity]);
-        res.status(201).json(result.rows[0]);
-    } catch (error) {
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
+    CREATE TABLE IF NOT EXISTS orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      buyer_name TEXT NOT NULL,
+      buyer_contact TEXT NOT NULL,
+      delivery_address TEXT NOT NULL,
+      items TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'Pending'
+    );
+    `
+    await db.run(createProductsTableQuery)
 
-// GET /api/orders/:id
-app.get('/api/orders/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        const result = await db.query('SELECT * FROM orders WHERE id = $1', [id]);
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Order not found' });
-        }
-        res.json(result.rows[0]);
-    } catch (error) {
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
+    app.listen(3000, () => {
+      console.log('Server is Running at http://localhost:3000')
+    })
+  } catch (e) {
+    console.log(`DB Error: ${e.message}`)
+    process.exit(1)
+  }
+}
+initializeDBServer()
 
-// GET /api/orders
-app.get('/api/orders', async (req, res) => {
-    try {
-        const result = await db.query('SELECT * FROM orders');
-        res.json(result.rows);
-    } catch (error) {
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
+// Helper function to convert DB object to response object
+const convertDbObjectToResponseObject = (dbObject) => {
+  return {
+    id: dbObject.id,
+    name: dbObject.name,
+    price: dbObject.price,
+    productUrl: dbObject.productUrl,
+    description: dbObject.description,
+  }
+}
 
-// PUT /api/orders/:id
-app.put('/api/orders/:id', async (req, res) => {
-    const { id } = req.params;
-    const { status } = req.body;
-    try {
-        const result = await db.query('UPDATE orders SET status = $1 WHERE id = $2 RETURNING *', [status, id]);
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Order not found' });
-        }
-        res.json(result.rows[0]);
-    } catch (error) {
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
+// GET all products
+app.get('/products/', async (request, response) => {
+  const getProductsQuery = `
+    SELECT *
+    FROM products;
+  `
+  const productsArray = await db.all(getProductsQuery)
+  response.send(productsArray.map(product => convertDbObjectToResponseObject(product)))
+})
 
-// POST /api/products
-app.post('/api/products', async (req, res) => {
-    const { name, price } = req.body;
-    try {
-        const result = await db.query('INSERT INTO products (name, price) VALUES ($1, $2) RETURNING *', [name, price]);
-        res.status(201).json(result.rows[0]);
-    } catch (error) {
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
+// GET product by id
+app.get('/products/:productId/', async (request, response) => {
+  const { productId } = request.params
+  const getProductQuery = `
+    SELECT *
+    FROM products
+    WHERE id = ${productId};
+  `
+  const product = await db.get(getProductQuery)
+  if (product) {
+    response.send(convertDbObjectToResponseObject(product))
+  } else {
+    response.status(404).send({ error: "Product not found" })
+  }
+})
 
-// PUT /api/products/:id
-app.put('/api/products/:id', async (req, res) => {
-    const { id } = req.params;
-    const { name, price } = req.body;
-    try {
-        const result = await db.query('UPDATE products SET name = $1, price = $2 WHERE id = $3 RETURNING *', [name, price, id]);
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Product not found' });
-        }
-        res.json(result.rows[0]);
-    } catch (error) {
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
+// POST add new product
+app.post('/products/', async (request, response) => {
+  const { name, price, productUrl, description } = request.body
+  const addProductQuery = `
+    INSERT INTO products (name, price, productUrl, description)
+    VALUES ('${name}', ${price}, '${productUrl}', '${description}');
+  `
+  const dbResponse = await db.run(addProductQuery)
+  const productId = dbResponse.lastID
+  response.send({ message: "Product Successfully Added", productId })
+})
 
-// DELETE /api/products/:id
-app.delete('/api/products/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        const result = await db.query('DELETE FROM products WHERE id = $1 RETURNING *', [id]);
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Product not found' });
-        }
-        res.status(204).send();
-    } catch (error) {
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
+// PUT update product by id
+app.put('/products/:productId/', async (request, response) => {
+  const { productId } = request.params
+  const { name, price, productUrl, description } = request.body
+  const updateProductQuery = `
+    UPDATE products
+    SET 
+      name = '${name}',
+      price = ${price},
+      productUrl = '${productUrl}',
+      description = '${description}'
+    WHERE id = ${productId};
+  `
+  await db.run(updateProductQuery)
+  response.send({ message: "Product Details Updated" })
+})
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+// DELETE product by id
+app.delete('/products/:productId/', async (request, response) => {
+  const { productId } = request.params
+  const deleteProductQuery = `
+    DELETE FROM products
+    WHERE id = ${productId};
+  `
+  await db.run(deleteProductQuery)
+  response.send({ message: "Product Removed" })
+})
+
+// POST place a new order
+app.post('/orders/', async (request, response) => {
+  const { buyer_name, buyer_contact, delivery_address, items } = request.body
+  const addOrderQuery = `
+    INSERT INTO orders (buyer_name, buyer_contact, delivery_address, items, status)
+    VALUES ('${buyer_name}', '${buyer_contact}', '${delivery_address}', '${JSON.stringify(items)}', 'Pending');
+  `
+  const dbResponse = await db.run(addOrderQuery)
+  const orderId = dbResponse.lastID
+  response.send({ message: "Order Successfully Placed", orderId })
+})
+
+// GET order by id
+app.get('/orders/:orderId/', async (request, response) => {
+  const { orderId } = request.params
+  const getOrderQuery = `
+    SELECT *
+    FROM orders
+    WHERE id = ${orderId};
+  `
+  const order = await db.get(getOrderQuery)
+  if (order) {
+    order.items = JSON.parse(order.items)
+    response.send(order)
+  } else {
+    response.status(404).send({ error: "Order not found" })
+  }
+})
+
+// GET all orders (admin)
+app.get('/orders/', async (request, response) => {
+  const getOrdersQuery = `
+    SELECT *
+    FROM orders;
+  `
+  const ordersArray = await db.all(getOrdersQuery)
+  ordersArray.forEach(order => {
+    order.items = JSON.parse(order.items)
+  })
+  response.send(ordersArray)
+})
+
+// PUT update order status by id (admin)
+app.put('/orders/:orderId/', async (request, response) => {
+  const { orderId } = request.params
+  const { status } = request.body
+  const updateOrderStatusQuery = `
+    UPDATE orders
+    SET status = '${status}'
+    WHERE id = ${orderId};
+  `
+  await db.run(updateOrderStatusQuery)
+  response.send({ message: "Order Status Updated" })
+})
+
+export default app
